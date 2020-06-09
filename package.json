@@ -1,8 +1,8 @@
 {
 	"name": "mysql-op",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "基于express框架的node后端对mysql数据库的一个sql操作工具",
-	"main": "src/index.js",
+	"main": "dis/mysql-op.js",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"serve": "webpack --mode development",
