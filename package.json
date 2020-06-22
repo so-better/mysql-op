@@ -1,6 +1,6 @@
 {
 	"name": "mysql-op",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"description": "基于express框架的node后端对mysql数据库的一个sql操作工具",
 	"main": "dis/mysql-op.js",
 	"scripts": {
