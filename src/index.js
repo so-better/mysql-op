@@ -84,13 +84,14 @@ class SqlUtil {
 		})
 	}
 
-	/**
-	 * 单条件查询
+	/**单条件查询
 	 * @param {Object} column 表字段名称(以此字段查询)
 	 * @param {Object} columnValue 表字段名称对应的值
-	 * @param {Object} columns 指定查询部分字段数组 
+	 * @param {Object} columns 指定查询部分字段数组
+	 * @param {Object} associatedTable 关联查询的表名
+	 * @param {Object} associatedColumns 关联字段，值为数组，第一个值是本表字段，第二个值是关联表字段
 	 */
-	query(column, columnValue, columns) {
+	query(column, columnValue, columns,associatedTable,associatedColumns) {
 		return new Promise((resolve, reject) => {
 			var str = '';
 			if (columns instanceof Array && columns.length > 0) {
@@ -101,8 +102,15 @@ class SqlUtil {
 			} else {
 				str = '*'
 			}
-			var sql = `select ${str} from ${this.table} where ${column}=?`;
-			var params = [columnValue];
+			var sql = '';
+			var params = [];
+			//如果存在关联查询
+			if(typeof associatedTable == 'string' && associatedTable && (associatedColumns instanceof Array) && associatedColumns.length == 2){
+				sql = `select ${str} from ${this.table},${associatedTable} where ${this.table}.${column}=? and (${this.table}.${associatedColumns[0]}=${associatedTable}.${associatedColumns[1]})`
+			}else {
+				sql = `select ${str} from ${this.table} where ${column}=?`
+				params = [columnValue]
+			}
 			this.pool.query(sql, params, (error, result) => {
 				if (error) {
 					reject(error);
@@ -121,9 +129,11 @@ class SqlUtil {
 	 * @param {Object} startIndex  分页数据起始序列
 	 * @param {Object} pageSize 分页大小
 	 * @param {Object} conjuction 连接词'and'或者'or' 
-	 * @param {Object} columns 指定查询部分字段数组 
+	 * @param {Object} columns 指定查询部分字段数组
+	 * @param {Object} associatedTable 关联查询的表名
+	 * @param {Object} associatedColumns 关联字段，值为数组，第一个值是本表字段，第二个值是关联表字段
 	 */
-	querys(queryOptions, conjuction, sortBy, sortMethod, startIndex, pageSize, columns) {
+	querys(queryOptions, conjuction, sortBy, sortMethod, startIndex, pageSize, columns,associatedTable,associatedColumns) {
 		return new Promise((resolve, reject) => {
 			var str = '';
 			if (columns instanceof Array && columns.length > 0) {
@@ -135,6 +145,10 @@ class SqlUtil {
 				str = '*'
 			}
 			var sql = `select ${str} from ${this.table}`;
+			//如果存在关联查询
+			if(typeof associatedTable == 'string' && associatedTable && (associatedColumns instanceof Array) && associatedColumns.length == 2){
+				sql = `select ${str} from ${this.table},${associatedTable}`
+			}
 			var params = [];
 			sql += " where ";
 			Object.keys(queryOptions).forEach(function(key, index) {
@@ -200,6 +214,12 @@ class SqlUtil {
 					params.push(qb.value);
 				}
 			})
+			
+			//如果存在关联查询
+			if(typeof associatedTable == 'string' && associatedTable && (associatedColumns instanceof Array) && associatedColumns.length == 2){
+				sql += `${this.table}.${associatedColumns[0]}=${associatedTable}.${associatedColumns[1]} ${conjuction}`
+			}
+			
 			const index = sql.lastIndexOf(conjuction);
 			if (index > -1) {
 				sql = sql.substring(0, index);
@@ -229,10 +249,16 @@ class SqlUtil {
 	 * 多条件查询的总记录数
 	 * @param {Object} queryOptions 字段参数对象
 	 * @param {Object} conjuction 连接词，取值and或者or 
+	 * @param {Object} associatedTable 关联查询的表名
+	 * @param {Object} associatedColumns 关联字段，值为数组，第一个值是本表字段，第二个值是关联表字段
 	 */
-	queryCounts(queryOptions, conjuction) {
+	queryCounts(queryOptions, conjuction,associatedTable,associatedColumns) {
 		return new Promise((resolve, reject) => {
 			var sql = `select count(1) from ${this.table}`;
+			//如果存在关联查询
+			if(typeof associatedTable == 'string' && associatedTable && (associatedColumns instanceof Array) && associatedColumns.length == 2){
+				sql = `select count(1) from ${this.table},${associatedTable}`
+			}
 			var params = [];
 			sql += " where ";
 			Object.keys(queryOptions).forEach(function(key, index) {
@@ -298,6 +324,10 @@ class SqlUtil {
 					params.push(qb.value);
 				}
 			})
+			//如果存在关联查询
+			if(typeof associatedTable == 'string' && associatedTable && (associatedColumns instanceof Array) && associatedColumns.length == 2){
+				sql += `${this.table}.${associatedColumns[0]}=${associatedTable}.${associatedColumns[1]} ${conjuction}`
+			}
 			const index = sql.lastIndexOf(conjuction);
 			if (index > -1) {
 				sql = sql.substring(0, index);
