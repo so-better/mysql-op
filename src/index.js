@@ -88,10 +88,9 @@ class SqlUtil {
 	 * @param {Object} column 表字段名称(以此字段查询)
 	 * @param {Object} columnValue 表字段名称对应的值
 	 * @param {Object} columns 指定查询部分字段数组
-	 * @param {Object} associatedTable 关联查询的表名
-	 * @param {Object} associatedColumns 关联字段，值为数组，第一个值是本表字段，第二个值是关联表字段
+	 * @param {Object} associatedTables 关联查询的表数组，包含表名和关联字段
 	 */
-	query(column, columnValue, columns,associatedTable,associatedColumns) {
+	query(column, columnValue, columns,associatedTables) {
 		return new Promise((resolve, reject) => {
 			var str = '';
 			if (columns instanceof Array && columns.length > 0) {
@@ -105,12 +104,26 @@ class SqlUtil {
 			var sql = '';
 			var params = [];
 			//如果存在关联查询
-			if(typeof associatedTable == 'string' && associatedTable && (associatedColumns instanceof Array) && associatedColumns.length == 2){
-				sql = `select ${str} from ${this.table},${associatedTable} where ${this.table}.${column}=? and (${this.table}.${associatedColumns[0]}=${associatedTable}.${associatedColumns[1]})`
+			if(associatedTables instanceof Array && associatedTables.length>0){
+				//获取关联的表数组和关联字段
+				let tables = [];
+				let columns2 = [];
+				associatedTables.forEach(associatedTable=>{
+					tables.push(associatedTable.table)
+					columns2.push(associatedTable.columns)
+				})
+				sql = `select ${str} from ${this.table},${tables.join(',')} where ${column}=? and (`;
+				columns2.forEach((column2,index)=>{
+					if(index == columns2.length - 1){
+						sql += `${column2[0]}=${column2[1]})`
+					}else {
+						sql += `${column2[0]}=${column2[1]} and `
+					}
+				})
 			}else {
 				sql = `select ${str} from ${this.table} where ${column}=?`
-				params = [columnValue]
 			}
+			params = [columnValue]
 			this.pool.query(sql, params, (error, result) => {
 				if (error) {
 					reject(error);
@@ -130,10 +143,9 @@ class SqlUtil {
 	 * @param {Object} pageSize 分页大小
 	 * @param {Object} conjuction 连接词'and'或者'or' 
 	 * @param {Object} columns 指定查询部分字段数组
-	 * @param {Object} associatedTable 关联查询的表名
-	 * @param {Object} associatedColumns 关联字段，值为数组，第一个值是本表字段，第二个值是关联表字段
+	 * @param {Object} associatedTables 关联查询的表数组，包含表名和关联字段
 	 */
-	querys(queryOptions, conjuction, sortBy, sortMethod, startIndex, pageSize, columns,associatedTable,associatedColumns) {
+	querys(queryOptions, conjuction, sortBy, sortMethod, startIndex, pageSize, columns,associatedTables) {
 		return new Promise((resolve, reject) => {
 			var str = '';
 			if (columns instanceof Array && columns.length > 0) {
@@ -144,14 +156,30 @@ class SqlUtil {
 			} else {
 				str = '*'
 			}
-			var sql = `select ${str} from ${this.table}`;
-			//如果存在关联查询
-			if(typeof associatedTable == 'string' && associatedTable && (associatedColumns instanceof Array) && associatedColumns.length == 2){
-				sql = `select ${str} from ${this.table},${associatedTable}`
+			var sql = '';
+			//获取字段参数对象数组
+			let queryOptionsArray = Object.keys(queryOptions);
+			//获取关联的表数组和关联字段
+			let tables = [];
+			let columns2 = [];
+			//如果关联查询
+			if(associatedTables instanceof Array && associatedTables.length>0){
+				associatedTables.forEach(associatedTable=>{
+					tables.push(associatedTable.table)
+					columns2.push(associatedTable.columns)
+				})
+				sql = `select ${str} from ${this.table},${tables.join(',')} where `;
+			}else {
+				sql = `select ${str} from ${this.table} `
+				if(queryOptionsArray.length > 0){
+					sql += ' where ';
+				}
 			}
 			var params = [];
-			sql += " where ";
 			Object.keys(queryOptions).forEach(function(key, index) {
+				if(index == 0){
+					sql += '(';
+				}
 				var qb = {};
 				if (typeof(queryOptions[key]) == "object") { //对象形式，则可能进行模糊查询或者范围查询
 					qb.value = queryOptions[key].value;
@@ -213,18 +241,24 @@ class SqlUtil {
 					}
 					params.push(qb.value);
 				}
+				if(index == queryOptionsArray.length-1){
+					sql = sql.substring(0,sql.lastIndexOf(conjuction));
+					sql += ')';
+				}
 			})
-			
-			//如果存在关联查询
-			if(typeof associatedTable == 'string' && associatedTable && (associatedColumns instanceof Array) && associatedColumns.length == 2){
-				sql += `${this.table}.${associatedColumns[0]}=${associatedTable}.${associatedColumns[1]} ${conjuction}`
-			}
-			
-			const index = sql.lastIndexOf(conjuction);
-			if (index > -1) {
-				sql = sql.substring(0, index);
-			} else {
-				sql = sql.substring(0, sql.lastIndexOf("where"));
+			if(associatedTables instanceof Array && associatedTables.length>0){
+				if(queryOptionsArray.length > 0){
+					sql += ' and (';
+				}else {
+					sql += '(';
+				}
+				columns2.forEach((column2,i)=>{
+					if(i == columns2.length - 1){
+						sql += `${column2[0]}=${column2[1]}) `
+					}else {
+						sql += `${column2[0]}=${column2[1]} and `
+					}
+				})
 			}
 			if (sortBy && sortMethod) {
 				sql += `order by ${sortBy} ${sortMethod} `;
@@ -249,19 +283,34 @@ class SqlUtil {
 	 * 多条件查询的总记录数
 	 * @param {Object} queryOptions 字段参数对象
 	 * @param {Object} conjuction 连接词，取值and或者or 
-	 * @param {Object} associatedTable 关联查询的表名
-	 * @param {Object} associatedColumns 关联字段，值为数组，第一个值是本表字段，第二个值是关联表字段
+	 * @param {Object} associatedTables 关联查询的表数组，包含表名和关联字段
 	 */
-	queryCounts(queryOptions, conjuction,associatedTable,associatedColumns) {
+	queryCounts(queryOptions, conjuction,associatedTables) {
 		return new Promise((resolve, reject) => {
-			var sql = `select count(1) from ${this.table}`;
-			//如果存在关联查询
-			if(typeof associatedTable == 'string' && associatedTable && (associatedColumns instanceof Array) && associatedColumns.length == 2){
-				sql = `select count(1) from ${this.table},${associatedTable}`
+			var sql = '';
+			//获取字段参数对象数组
+			let queryOptionsArray = Object.keys(queryOptions);
+			//获取关联的表数组和关联字段
+			let tables = [];
+			let columns2 = [];
+			//如果关联查询
+			if(associatedTables instanceof Array && associatedTables.length>0){
+				associatedTables.forEach(associatedTable=>{
+					tables.push(associatedTable.table)
+					columns2.push(associatedTable.columns)
+				})
+				sql = `select count(1) from ${this.table},${tables.join(',')} where `;
+			}else {
+				sql = `select count(1) from ${this.table} `
+				if(queryOptionsArray.length > 0){
+					sql += ' where ';
+				}
 			}
 			var params = [];
-			sql += " where ";
-			Object.keys(queryOptions).forEach(function(key, index) {
+			queryOptionsArray.forEach(function(key, index) {
+				if(index == 0){
+					sql += '(';
+				}
 				var qb = {};
 				if (typeof(queryOptions[key]) == "object") { //对象形式，则可能进行模糊查询或者范围查询
 					qb.value = queryOptions[key].value;
@@ -280,7 +329,6 @@ class SqlUtil {
 					qb.fuzzy = false; //默认非模糊查询
 					qb.equal = true; //默认范围查询时包含等号
 				}
-			
 				//如果value值为数组，表示范围查询
 				if (qb.value instanceof Array) {
 					if (qb.value[0] != null && qb.value[1] != null && qb.value[0] != undefined && qb.value[1] != undefined) {
@@ -323,16 +371,24 @@ class SqlUtil {
 					}
 					params.push(qb.value);
 				}
+				if(index == queryOptionsArray.length-1){
+					sql = sql.substring(0,sql.lastIndexOf(conjuction));
+					sql += ')';
+				}
 			})
-			//如果存在关联查询
-			if(typeof associatedTable == 'string' && associatedTable && (associatedColumns instanceof Array) && associatedColumns.length == 2){
-				sql += `${this.table}.${associatedColumns[0]}=${associatedTable}.${associatedColumns[1]} ${conjuction}`
-			}
-			const index = sql.lastIndexOf(conjuction);
-			if (index > -1) {
-				sql = sql.substring(0, index);
-			} else {
-				sql = sql.substring(0, sql.lastIndexOf("where"));
+			if(associatedTables instanceof Array && associatedTables.length>0){
+				if(queryOptionsArray.length > 0){
+					sql += ' and (';
+				}else {
+					sql += '(';
+				}
+				columns2.forEach((column2,i)=>{
+					if(i == columns2.length - 1){
+						sql += `${column2[0]}=${column2[1]}) `
+					}else {
+						sql += `${column2[0]}=${column2[1]} and `
+					}
+				})
 			}
 			this.pool.query(sql, params, (error, result) => {
 				if (error) {
