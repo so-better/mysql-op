@@ -608,7 +608,6 @@ class SqlUtil {
 					sql = sql.substring(0,sql.lastIndexOf(conjuction));
 				}
 			})
-			console.log(sql);return;
 			this.pool.query(sql, params, (error, result) => {
 				if (error) {
 					reject(error);
