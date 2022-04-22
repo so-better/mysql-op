@@ -1,11 +1,11 @@
 {
-	"name": "mysql-op",
-	"version": "1.1.5",
-	"description": "基于express框架的node后端对mysql数据库的一个sql操作工具",
-	"main": "src/index.js",
-	"scripts": {
-		"test": "echo \"Error: no test specified\" && exit 1"
-	},
-	"author": "lingkai",
-	"license": "MIT"
+    "name": "mysql-op",
+    "version": "1.1.6",
+    "description": "基于express框架的node后端对mysql数据库的一个sql操作工具",
+    "main": "src/index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "lingkai",
+    "license": "MIT"
 }
