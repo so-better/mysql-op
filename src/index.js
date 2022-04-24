@@ -104,7 +104,7 @@ class SqlUtil {
                 for (let i = 0; i < columns.length; i++) {
                     str += ',' + columns[i]
                 }
-                str = str.substr(1)
+                str = str.substring(1)
             } else {
                 str = '*'
             }
@@ -162,7 +162,7 @@ class SqlUtil {
                 for (let i = 0; i < columns.length; i++) {
                     str += ',' + columns[i]
                 }
-                str = str.substr(1)
+                str = str.substring(1)
             } else {
                 str = '*'
             }
