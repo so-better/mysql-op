@@ -167,8 +167,6 @@ class SqlUtil {
                 str = '*'
             }
             let sql = `select ${str} from ${this.table}`
-            //获取字段参数对象数组
-            let queryOptionsArray = Object.keys(queryOptions)
             //如果关联查询
             if (
                 associatedTables instanceof Array &&
@@ -178,14 +176,22 @@ class SqlUtil {
                     sql += ` ${joinType} join ${associatedTable.table} on ${associatedTable.columns[1]}=${associatedTable.columns[0]}`
                 })
             }
+            //获取字段参数对象数组
+            let queryOptionsArray = Object.keys(queryOptions)
             if (queryOptionsArray.length > 0) {
                 sql += ' where '
             }
             let params = []
-            Object.keys(queryOptions).forEach(function (key, index) {
+            queryOptionsArray.forEach((key, index) => {
                 let qb = {}
-                if (typeof queryOptions[key] == 'object') {
-                    //对象形式，则可能进行模糊查询或者范围查询
+                //对象形式，则可能进行模糊查询或者范围查询
+                if (
+                    typeof queryOptions[key] == 'object' &&
+                    Object.prototype.toString
+                        .call(queryOptions[key])
+                        .toLocaleLowerCase() === '[object object]' &&
+                    !queryOptions[key].length
+                ) {
                     qb.value = queryOptions[key].value
                     if (typeof queryOptions[key].fuzzy == 'boolean') {
                         qb.fuzzy = queryOptions[key].fuzzy
@@ -195,13 +201,16 @@ class SqlUtil {
                     if (typeof queryOptions[key].equal == 'boolean') {
                         qb.equal = queryOptions[key].equal
                     } else {
-                        qb.equal = true
+                        qb.equal = false
                     }
-                } else {
-                    //非对象形式，即直接根据字段-字段值进行查询
+                }
+                //非对象形式，即直接根据字段-字段值进行查询
+                else {
                     qb.value = queryOptions[key]
-                    qb.fuzzy = false //默认非模糊查询
-                    qb.equal = true //默认范围查询时包含等号
+                    //默认非模糊查询
+                    qb.fuzzy = false
+                    //默认范围查询时不包含等号
+                    qb.equal = false
                 }
 
                 //如果value值为数组，表示范围查询
@@ -299,8 +308,6 @@ class SqlUtil {
     ) {
         return new Promise((resolve, reject) => {
             let sql = `select count(1) from ${this.table}`
-            //获取字段参数对象数组
-            let queryOptionsArray = Object.keys(queryOptions)
             //如果关联查询
             if (
                 associatedTables instanceof Array &&
@@ -310,14 +317,22 @@ class SqlUtil {
                     sql += ` ${joinType} join ${associatedTable.table} on ${associatedTable.columns[1]}=${associatedTable.columns[0]}`
                 })
             }
+            //获取字段参数对象数组
+            let queryOptionsArray = Object.keys(queryOptions)
             if (queryOptionsArray.length > 0) {
                 sql += ' where '
             }
             let params = []
             queryOptionsArray.forEach(function (key, index) {
                 let qb = {}
-                if (typeof queryOptions[key] == 'object') {
-                    //对象形式，则可能进行模糊查询或者范围查询
+                //对象形式，则可能进行模糊查询或者范围查询
+                if (
+                    typeof queryOptions[key] == 'object' &&
+                    Object.prototype.toString
+                        .call(queryOptions[key])
+                        .toLocaleLowerCase() === '[object object]' &&
+                    !queryOptions[key].length
+                ) {
                     qb.value = queryOptions[key].value
                     if (typeof queryOptions[key].fuzzy == 'boolean') {
                         qb.fuzzy = queryOptions[key].fuzzy
@@ -327,13 +342,16 @@ class SqlUtil {
                     if (typeof queryOptions[key].equal == 'boolean') {
                         qb.equal = queryOptions[key].equal
                     } else {
-                        qb.equal = true
+                        qb.equal = false
                     }
-                } else {
-                    //非对象形式，即直接根据字段-字段值进行查询
+                }
+                //非对象形式，即直接根据字段-字段值进行查询
+                else {
                     qb.value = queryOptions[key]
-                    qb.fuzzy = false //默认非模糊查询
-                    qb.equal = true //默认范围查询时包含等号
+                    //默认非模糊查询
+                    qb.fuzzy = false
+                    //默认范围查询时不包含等号
+                    qb.equal = false
                 }
                 //如果value值为数组，表示范围查询
                 if (qb.value instanceof Array) {
